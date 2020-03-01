@@ -10,15 +10,16 @@ import (
 
 // Player controls audio playback of a PixelSound.
 type Player struct {
-	sr beep.SampleRate
-	bs int
-	i  image.Image
-	ps PixelSound
-	x  int
-	y  int
-	q  *Queue
-	c  *beep.Ctrl
-	v  *effects.Volume
+	sr beep.SampleRate // Sample rate of playback
+	bs int             // Buffer size of playback
+	i  image.Image     // Image being played
+	ps PixelSound      // Algorithms for traversal and sonification
+	x  int             // Previous pixel x
+	y  int             // Previous pixel y
+	st interface{}     // Previous state from sonify
+	q  *Queue          // Streamer to queue up playback
+	c  *beep.Ctrl      // Streamer to play/pause
+	v  *effects.Volume // Streamer to control volume
 }
 
 // NewPlayer creates a Player.
@@ -64,7 +65,8 @@ func (p *Player) Play(image image.Image, ps PixelSound, x, y int) {
 	p.q.Clear()
 
 	// Get the first pixel Streamer
-	s := ps.Sonify(p.i.At(p.x, p.y), p.sr)
+	s, st := ps.Sonify(p.i.At(p.x, p.y), p.sr, nil)
+	p.st = st
 
 	// Call the next pixel Streamer after the first is done
 	n := beep.Seq(s, beep.Callback(p.next))
@@ -83,10 +85,14 @@ func (p *Player) next() {
 	}
 	if ok {
 		// Add this pixel Streamer, then the next
-		p.q.Add(beep.Seq(p.ps.Sonify(p.i.At(p.x, p.y), p.sr), beep.Callback(p.next)))
+		s, st := p.ps.Sonify(p.i.At(p.x, p.y), p.sr, p.st)
+		p.st = st
+		p.q.Add(beep.Seq(s, beep.Callback(p.next)))
 	} else {
 		// Add the final pixel Streamer
-		p.q.Add(p.ps.Sonify(p.i.At(p.x, p.y), p.sr))
+		s, st := p.ps.Sonify(p.i.At(p.x, p.y), p.sr, p.st)
+		p.st = st
+		p.q.Add(s)
 	}
 }
 

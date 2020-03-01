@@ -19,7 +19,7 @@ func main() {
 func run() {
 	// Create PixelSound player
 	sr := beep.SampleRate(44100)
-	player := NewPlayer(sr, 1024)
+	player := NewPlayer(sr, 2048)
 
 	// Load image
 	im, _, err := LoadImageFromFile("images/me.png")

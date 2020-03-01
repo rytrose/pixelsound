@@ -12,12 +12,12 @@ import (
 type TraverseFunc func(prevX, prevY int, bounds image.Rectangle) (x, y int, ok bool)
 
 // SonifyFunc is a function that takes a color and returns a beep.Streamer sonifying that color.
-type SonifyFunc func(color.Color, beep.SampleRate) beep.Streamer
+type SonifyFunc func(color.Color, beep.SampleRate, interface{}) (beep.Streamer, interface{})
 
 // PixelSound is an interface that describes how an image is traversed and sonified.
 type PixelSound interface {
-	Traverse(prevX, prevY int, b image.Rectangle) (x, y int, ok bool)
-	Sonify(c color.Color, sr beep.SampleRate) (s beep.Streamer)
+	Traverse(int, int, image.Rectangle) (int, int, bool)
+	Sonify(color.Color, beep.SampleRate, interface{}) (beep.Streamer, interface{})
 }
 
 // PixelSounder is a struct that implements the PixelSound interface.
@@ -32,6 +32,6 @@ func (ps *PixelSounder) Traverse(prevX, prevY int, b image.Rectangle) (x, y int,
 }
 
 // Sonify calls a SonifyFunc.
-func (ps *PixelSounder) Sonify(c color.Color, sr beep.SampleRate) beep.Streamer {
-	return ps.S(c, sr)
+func (ps *PixelSounder) Sonify(c color.Color, sr beep.SampleRate, st interface{}) (beep.Streamer, interface{}) {
+	return ps.S(c, sr, st)
 }

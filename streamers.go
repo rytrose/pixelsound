@@ -7,8 +7,7 @@ import (
 )
 
 // Sine is a simple Sine wave Streamer.
-func Sine(sr beep.SampleRate, freq float64) beep.Streamer {
-	t := 0.0
+func Sine(sr beep.SampleRate, freq float64, t float64) beep.Streamer {
 	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
 		for i := range samples {
 			y := math.Sin(math.Pi * freq * t)
