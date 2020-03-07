@@ -7,17 +7,18 @@ import (
 	"github.com/faiface/beep"
 )
 
+var sine *Sine
+
+// InitSonification populates Streamers.
+func InitSonification(sr beep.SampleRate) {
+	sine = NewSine(440, 1.0, float64(sr.N(1*time.Second)))
+}
+
 // SineColor maps red to freq and green to duration.
 func SineColor(c color.Color, sr beep.SampleRate, st interface{}) (beep.Streamer, interface{}) {
-	var t float64
-	if st != nil {
-		t = st.(float64)
-	} else {
-		t = 0.0
-	}
+	r, g, _, _ := FloatRGBA(c)
+	sine.Freq = 30 + (1600 * r)
+	durMS := 10 + (40 * g)
 
-	r, g, _, _ := c.RGBA()
-	freq := 30 + (1600 * (float64(r) / 65535))
-	durMS := 10 + (40 * (float64(g) / 65535))
-	return beep.Take(sr.N(time.Duration(durMS)*time.Millisecond), Sine(sr, float64(freq), t)), t + (durMS / 1000.0)
+	return beep.Take(sr.N(time.Duration(durMS)*time.Millisecond), sine), nil
 }

@@ -27,6 +27,9 @@ func NewPlayer(sampleRate beep.SampleRate, bufferSize int) *Player {
 	// Initialize the speaker
 	speaker.Init(sampleRate, bufferSize)
 
+	// Initialize sonification algorithms
+	InitSonification(sampleRate)
+
 	// Setup beep streamers
 	q := &Queue{}
 	c := &beep.Ctrl{

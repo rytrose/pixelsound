@@ -1,6 +1,8 @@
 package main
 
-import "github.com/faiface/beep"
+import (
+	"github.com/faiface/beep"
+)
 
 // Queue plays streamers sequentially, and otherwise outputs silence.
 type Queue struct {
