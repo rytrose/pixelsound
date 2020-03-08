@@ -12,7 +12,7 @@ import (
 
 var pointChan chan image.Point
 
-const traverse = false
+const traverse = true
 
 func main() {
 	pixelgl.Run(run)
@@ -69,6 +69,9 @@ func run() {
 			player.PlayPixel(p)
 		})
 	}
+
+	// Draw initial picture
+	sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
 
 	// UI main loop
 	for !win.Closed() {
