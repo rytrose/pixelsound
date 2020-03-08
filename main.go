@@ -12,15 +12,13 @@ import (
 
 var pointChan chan image.Point
 
+const traverse = false
+
 func main() {
 	pixelgl.Run(run)
 }
 
 func run() {
-	// Create PixelSound player
-	sr := beep.SampleRate(44100)
-	player := NewPlayer(sr, 2048)
-
 	// Load image
 	im, _, err := LoadImageFromFile("images/me.png")
 
@@ -51,12 +49,26 @@ func run() {
 	// Create channel for pixel highlighting
 	pointChan = make(chan image.Point)
 
+	// Create PixelSound player
+	sr := beep.SampleRate(44100)
+	player := NewPlayer(win, sr, 2048)
+
 	// Instantiate and play PixelSound
 	ps := &PixelSounder{
 		T: TtoBLtoR,
 		S: SineColor,
 	}
-	player.Play(im, ps, 0, 0)
+	player.SetImagePixelSound(im, ps)
+
+	// PLAY W/TRAVERSAL
+	if traverse {
+		player.Play(im, ps, 0, 0)
+	} else { // PLAY W/MOUSE
+		// Do mouse movement
+		go OnMouseMove(win, func(p pixel.Vec) {
+			player.PlayPixel(p)
+		})
+	}
 
 	// UI main loop
 	for !win.Closed() {

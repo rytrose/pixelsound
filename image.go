@@ -7,6 +7,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"math"
 	"os"
 
 	"github.com/faiface/pixel/imdraw"
@@ -51,6 +52,13 @@ func convertImageToPixel(win *pixelgl.Window, x int, y int) pixel.Vec {
 	h := win.Bounds().H()
 	newY := h - float64(y)
 	return pixel.V(float64(x), newY)
+}
+
+// convertPixelToImage converts coordinates from pixel to image
+func convertPixelToImage(win *pixelgl.Window, p pixel.Vec) pixel.Vec {
+	h := win.Bounds().H()
+	newY := math.Abs(p.Y - h)
+	return pixel.V(p.X, newY)
 }
 
 // hexColor returns an HTML hex-representation of c. The alpha channel is dropped
