@@ -43,6 +43,11 @@ func DrawImage(win *pixelgl.Window, sprite *pixel.Sprite, imd *imdraw.IMDraw, co
 	imd.Push(pixel.V(pt.X-5, pt.Y-5), pixel.V(pt.X+5, pt.Y+5))
 	imd.Rectangle(0)
 
+	// Trace around rectangle
+	imd.Color = pixel.RGB(0, 0, 0)
+	imd.Push(pixel.V(pt.X-5, pt.Y-5), pixel.V(pt.X+5, pt.Y+5))
+	imd.Rectangle(1)
+
 	// Draw rectangle
 	imd.Draw(win)
 }

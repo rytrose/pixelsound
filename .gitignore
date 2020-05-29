@@ -1,3 +1,6 @@
 pixelsound
 audio_outputs
+audio_inputs
 images
+vendor
+.DS_Store

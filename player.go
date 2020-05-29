@@ -110,7 +110,7 @@ func (p *Player) next() {
 }
 
 // PlayPixel plays the pixel at the provided point.
-func (p *Player) PlayPixel(po pixel.Vec) {
+func (p *Player) PlayPixel(po pixel.Vec, queue bool) {
 	po = po.Floor()
 	po = convertPixelToImage(p.win, po)
 	pointChan <- image.Point{
@@ -119,6 +119,9 @@ func (p *Player) PlayPixel(po pixel.Vec) {
 	}
 	s, st := p.ps.Sonify(p.i.At(int(po.X), int(po.Y)), p.sr, p.st)
 	p.st = st
+	if !queue {
+		p.q.Clear()
+	}
 	p.q.Add(s)
 }
 

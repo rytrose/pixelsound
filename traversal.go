@@ -5,6 +5,11 @@ import (
 	"math/rand"
 )
 
+var traverseFuncs = map[string]TraverseFunc{
+	"TtoBLtoR": TtoBLtoR,
+	"Random":   Random,
+}
+
 // TtoBLtoR traverse an image top-to-bottom left-to-right
 func TtoBLtoR(pX, pY int, b image.Rectangle) (int, int, bool) {
 	if pX == b.Max.X-2 && pY == b.Max.Y-1 {
