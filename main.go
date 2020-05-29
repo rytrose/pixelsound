@@ -51,6 +51,10 @@ func run() {
 		panic(fmt.Sprintf("unable to create window: %s", err))
 	}
 
+	// Start observing input
+	go MouseInput(win)
+	go KeyboardInput(win)
+
 	// Create image sprite
 	pd := pixel.PictureDataFromImage(im)
 	sprite := pixel.NewSprite(pd, pd.Bounds())
@@ -85,10 +89,11 @@ func run() {
 
 	// PLAY W/MOUSE
 	if *mouse {
-		// Do mouse movement
-		go OnMouseMove(win, func(p pixel.Vec) {
+		// Register play pixel on mouse movement
+		stop := OnMouseMove(func(p pixel.Vec) {
 			player.PlayPixel(p, *mouseQueue)
 		})
+		defer stop()
 	} else { // PLAY W/TRAVERSAL
 		player.Play(im, ps, 0, 0)
 	}

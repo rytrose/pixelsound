@@ -10,6 +10,7 @@ require (
 	github.com/go-gl/glfw v0.0.0-20200222043503-6f7a984d4dc4 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200420212212-258d9bec320e // indirect
 	github.com/go-gl/mathgl v0.0.0-20190713194549-592312d8590a // indirect
+	github.com/google/uuid v1.1.1
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/gopherjs/gopherwasm v1.1.0 // indirect
 	github.com/hajimehoshi/oto v0.6.1 // indirect
