@@ -13,6 +13,7 @@ import (
 )
 
 var pointChan chan image.Point
+var keyboardPixelLocation pixel.Vec
 
 func main() {
 	pixelgl.Run(run)
@@ -23,7 +24,8 @@ func run() {
 	imageFilename := flag.String("im", "images/me.png", "image to pixelsound")
 	inputAudioFilename := flag.String("audio", "audio_inputs/my_name_is_doug_dimmadome.mp3", "audio file to use for pixelsound (if needed)")
 	mouse := flag.Bool("mouse", false, "use the mouse to play pixels instead of traverse function")
-	mouseQueue := flag.Bool("mouseQueue", false, "all pixels moused over are played sequentially, as opposed to the most recent pixel only")
+	keyboard := flag.Bool("keyboard", false, "use the keyboard to play pixels instead of traverse function")
+	queue := flag.Bool("queue", false, "all pixels moused over or key pressed to are played sequentially, as opposed to the most recent pixel only")
 	traverseFunc := flag.String("t", "TtoBLtoR", "traversal function to use")
 	sonifyFunc := flag.String("s", "SineColor", "sonification function to use")
 	flag.Parse()
@@ -53,7 +55,6 @@ func run() {
 
 	// Start observing input
 	go MouseInput(win)
-	go KeyboardInput(win)
 
 	// Create image sprite
 	pd := pixel.PictureDataFromImage(im)
@@ -91,9 +92,59 @@ func run() {
 	if *mouse {
 		// Register play pixel on mouse movement
 		stop := OnMouseMove(func(p pixel.Vec) {
-			player.PlayPixel(p, *mouseQueue)
+			player.PlayPixel(p, *queue)
 		})
 		defer stop()
+	} else if *keyboard {
+		// Setup play pixel by arrow keys
+		keyboardPixelLocation = pixel.Vec{
+			X: 0,
+			Y: win.Bounds().Max.Y,
+		}
+
+		// LEFT ARROW
+		stopL := OnKeyPress(pixelgl.KeyLeft, func(b pixelgl.Button) {
+			newX := keyboardPixelLocation.X - 1
+			if newX < 0 {
+				newX = win.Bounds().Max.X
+			}
+			keyboardPixelLocation.X = newX
+			player.PlayPixel(keyboardPixelLocation, *queue)
+		}, true)
+		defer stopL()
+
+		// RIGHT ARROW
+		stopR := OnKeyPress(pixelgl.KeyRight, func(b pixelgl.Button) {
+			newX := keyboardPixelLocation.X + 1
+			if newX > win.Bounds().Max.X {
+				newX = 0
+			}
+			keyboardPixelLocation.X = newX
+			player.PlayPixel(keyboardPixelLocation, *queue)
+		}, true)
+		defer stopR()
+
+		// UP ARROW
+		stopU := OnKeyPress(pixelgl.KeyUp, func(b pixelgl.Button) {
+			newY := keyboardPixelLocation.Y + 1
+			if newY > win.Bounds().Max.Y {
+				newY = 0
+			}
+			keyboardPixelLocation.Y = newY
+			player.PlayPixel(keyboardPixelLocation, *queue)
+		}, true)
+		defer stopU()
+
+		// DOWN ARROW
+		stopD := OnKeyPress(pixelgl.KeyDown, func(b pixelgl.Button) {
+			newY := keyboardPixelLocation.Y - 1
+			if newY < 0 {
+				newY = win.Bounds().Max.Y
+			}
+			keyboardPixelLocation.Y = newY
+			player.PlayPixel(keyboardPixelLocation, *queue)
+		}, true)
+		defer stopD()
 	} else { // PLAY W/TRAVERSAL
 		player.Play(im, ps, 0, 0)
 	}
@@ -109,5 +160,7 @@ func run() {
 		default:
 		}
 		win.Update()
+		MouseInput(win)
+		KeyboardUpdate(win)
 	}
 }
