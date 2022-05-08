@@ -1,4 +1,4 @@
-package main
+package player
 
 import (
 	"image"
@@ -6,32 +6,27 @@ import (
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/speaker"
-	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/rytrose/pixelsound/api"
 )
 
 // Player controls audio playback of a PixelSound.
 type Player struct {
-	win *pixelgl.Window // Window of GUI
-	sr  beep.SampleRate // Sample rate of playback
-	bs  int             // Buffer size of playback
-	i   image.Image     // Image being played
-	ps  PixelSound      // Algorithms for traversal and sonification
-	x   int             // Previous pixel x
-	y   int             // Previous pixel y
-	st  interface{}     // Previous state from sonify
-	q   *Queue          // Streamer to queue up playback
-	c   *beep.Ctrl      // Streamer to play/pause
-	v   *effects.Volume // Streamer to control volume
+	sr        beep.SampleRate  // Sample rate of playback
+	bs        int              // Buffer size of playback
+	i         image.Image      // Image being played
+	ps        api.PixelSound   // Algorithms for traversal and sonification
+	loc       image.Point      // Pixel location
+	state     interface{}      // Previous state from sonification
+	q         *Queue           // Streamer to queue up playback
+	c         *beep.Ctrl       // Streamer to play/pause
+	v         *effects.Volume  // Streamer to control volume
+	PointChan chan image.Point // Writes the point being played
 }
 
 // NewPlayer creates a Player.
-func NewPlayer(win *pixelgl.Window, sampleRate beep.SampleRate, bufferSize int) *Player {
+func NewPlayer(sampleRate beep.SampleRate, bufferSize int) *Player {
 	// Initialize the speaker
 	speaker.Init(sampleRate, bufferSize)
-
-	// Initialize sonification algorithms
-	InitSonification(sampleRate)
 
 	// Setup beep streamers
 	q := &Queue{}
@@ -51,35 +46,34 @@ func NewPlayer(win *pixelgl.Window, sampleRate beep.SampleRate, bufferSize int) 
 
 	// Return Player
 	return &Player{
-		win: win,
-		sr:  sampleRate,
-		bs:  bufferSize,
-		q:   q,
-		c:   c,
-		v:   v,
+		sr:        sampleRate,
+		bs:        bufferSize,
+		q:         q,
+		c:         c,
+		v:         v,
+		PointChan: make(chan image.Point),
 	}
 }
 
 // SetImagePixelSound sets the current image and PixelSound.
-func (p *Player) SetImagePixelSound(image image.Image, ps PixelSound) {
+func (p *Player) SetImagePixelSound(image image.Image, ps api.PixelSound) {
 	p.i = image
 	p.ps = ps
 }
 
 // Play plays a provided PixelSound for an image starting from provided coordinates.
-func (p *Player) Play(image image.Image, ps PixelSound, x, y int) {
+func (p *Player) Play(image image.Image, ps api.PixelSound, start image.Point) {
 	// Save playing image, PixelSound, and starting coordinates
 	p.i = image
 	p.ps = ps
-	p.x = x
-	p.y = y
+	p.loc = start
 
 	// Stop anything playing previously
 	p.q.Clear()
 
 	// Get the first pixel Streamer
-	s, st := ps.Sonify(p.i.At(p.x, p.y), p.sr, nil)
-	p.st = st
+	s, state := ps.Sonify(p.i.At(p.loc.X, p.loc.Y), p.sr, nil)
+	p.state = state
 
 	// Call the next pixel Streamer after the first is done
 	n := beep.Seq(s, beep.Callback(p.next))
@@ -91,34 +85,27 @@ func (p *Player) Play(image image.Image, ps PixelSound, x, y int) {
 // next traverses the PixelSound and queues up the next pixel Streamer, if there is one.
 func (p *Player) next() {
 	var ok bool
-	p.x, p.y, ok = p.ps.Traverse(p.x, p.y, p.i.Bounds())
-	pointChan <- image.Point{
-		X: p.x,
-		Y: p.y,
-	}
+	p.loc, ok = p.ps.Traverse(p.loc, p.i.Bounds())
+	p.PointChan <- p.loc
 	if ok {
 		// Add this pixel Streamer, then the next
-		s, st := p.ps.Sonify(p.i.At(p.x, p.y), p.sr, p.st)
-		p.st = st
+		s, state := p.ps.Sonify(p.i.At(p.loc.X, p.loc.Y), p.sr, p.state)
+		p.state = state
 		p.q.Add(beep.Seq(s, beep.Callback(p.next)))
 	} else {
 		// Add the final pixel Streamer
-		s, st := p.ps.Sonify(p.i.At(p.x, p.y), p.sr, p.st)
-		p.st = st
+		s, st := p.ps.Sonify(p.i.At(p.loc.X, p.loc.Y), p.sr, p.state)
+		p.state = st
 		p.q.Add(s)
 	}
 }
 
 // PlayPixel plays the pixel at the provided point.
-func (p *Player) PlayPixel(po pixel.Vec, queue bool) {
-	po = po.Floor()
-	po = convertPixelToImage(p.win, po)
-	pointChan <- image.Point{
-		X: int(po.X),
-		Y: int(po.Y),
-	}
-	s, st := p.ps.Sonify(p.i.At(int(po.X), int(po.Y)), p.sr, p.st)
-	p.st = st
+func (p *Player) PlayPixel(point image.Point, queue bool) {
+	p.loc = point
+	p.PointChan <- p.loc
+	s, state := p.ps.Sonify(p.i.At(point.X, point.Y), p.sr, p.state)
+	p.state = state
 	if !queue {
 		p.q.Clear()
 	}

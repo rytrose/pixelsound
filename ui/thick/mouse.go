@@ -1,4 +1,4 @@
-package main
+package thick
 
 import (
 	"sync"
@@ -7,8 +7,6 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/google/uuid"
 )
-
-var mouseRefreshTimeMs = 16.666666667
 
 var mouseMute sync.RWMutex
 var onMouseMoveFuncs = map[string]func(pixel.Vec){}

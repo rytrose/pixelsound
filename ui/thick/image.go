@@ -1,7 +1,6 @@
-package main
+package thick
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	_ "image/gif"
@@ -10,9 +9,8 @@ import (
 	"math"
 	"os"
 
-	"github.com/faiface/pixel/imdraw"
-
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 )
 
@@ -28,9 +26,9 @@ func LoadImageFromFile(path string) (image.Image, string, error) {
 }
 
 // DrawImage draws an image with the currently "playing" pixel enlarged.
-func DrawImage(win *pixelgl.Window, sprite *pixel.Sprite, imd *imdraw.IMDraw, color color.Color, x int, y int) {
+func DrawImage(win *pixelgl.Window, sprite *pixel.Sprite, imd *imdraw.IMDraw, color color.Color, point image.Point) {
 	// image has (0, 0) be top left, pixel has (0, 0) be bottom left
-	pt := convertImageToPixel(win, x, y)
+	pt := convertImageToPixel(win, point)
 
 	// Clear IMDraw
 	imd.Clear()
@@ -52,23 +50,20 @@ func DrawImage(win *pixelgl.Window, sprite *pixel.Sprite, imd *imdraw.IMDraw, co
 	imd.Draw(win)
 }
 
-// convertImageToPixel converts coordinates from image to pixel
-func convertImageToPixel(win *pixelgl.Window, x int, y int) pixel.Vec {
+// convertImageToPixel converts coordinates from image.Point to pixel.Vec.
+// pixel considers Y=0 to be bottom-left, while image considers Y=0 to
+// be top-left.
+func convertImageToPixel(win *pixelgl.Window, point image.Point) pixel.Vec {
 	h := win.Bounds().H()
-	newY := h - float64(y)
-	return pixel.V(float64(x), newY)
+	newY := h - float64(point.Y)
+	return pixel.V(float64(point.X), newY)
 }
 
-// convertPixelToImage converts coordinates from pixel to image
-func convertPixelToImage(win *pixelgl.Window, p pixel.Vec) pixel.Vec {
+// convertPixelToImage converts coordinates from pixel.Vec to image.Point.
+// pixel considers Y=0 to be bottom-left, while image considers Y=0 to
+// be top-left.
+func convertPixelToImage(win *pixelgl.Window, p pixel.Vec) image.Point {
 	h := win.Bounds().H()
 	newY := math.Abs(p.Y - h)
-	return pixel.V(p.X, newY)
-}
-
-// hexColor returns an HTML hex-representation of c. The alpha channel is dropped
-// and precision is truncated to 8 bits per channel
-func hexColor(c color.Color) string {
-	rgba := color.RGBAModel.Convert(c).(color.RGBA)
-	return fmt.Sprintf("#%.2x%.2x%.2x", rgba.R, rgba.G, rgba.B)
+	return image.Point{int(p.X), int(newY)}
 }

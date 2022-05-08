@@ -1,4 +1,4 @@
-package main
+package thick
 
 import (
 	"sync"
@@ -68,7 +68,7 @@ func OnKeyPress(key pixelgl.Button, f func(pixelgl.Button), repeat bool) func() 
 	id := uuid.New().String()
 	keyMute.Lock()
 	onKeyPressedFuncMap[key] = map[string]*keyPressFunctionInstance{
-		id: &keyPressFunctionInstance{
+		id: {
 			f:                 f,
 			repeat:            repeat,
 			repeating:         false,
