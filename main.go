@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rytrose/pixelsound/ui"
+	"github.com/rytrose/pixelsound/ui/browser"
 	"github.com/rytrose/pixelsound/ui/thick"
 )
 
@@ -31,7 +32,7 @@ func main() {
 }
 
 func setupJS() ui.UI {
-	return nil
+	return browser.NewBrowser()
 }
 
 func setupDarwin() ui.UI {
