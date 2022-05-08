@@ -4,3 +4,4 @@ audio_inputs
 images
 vendor
 .DS_Store
+.vscode
