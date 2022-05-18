@@ -1,30 +1,19 @@
 package main
 
 import (
-	"log"
-	"runtime"
-	"strings"
-
+	"github.com/go-humble/detect"
 	"github.com/rytrose/pixelsound/ui"
 	"github.com/rytrose/pixelsound/ui/browser"
 	"github.com/rytrose/pixelsound/ui/thick"
 )
 
-var isJS bool
-var isDarwin bool
-
 func main() {
-	isJS = strings.Contains(runtime.GOOS, "js")
-	isDarwin = strings.Contains(runtime.GOOS, "darwin")
-
-	// Determine UI to use based on running os
+	// Determine which UI to use
 	var ui ui.UI
-	if isJS {
+	if detect.IsBrowser() {
 		ui = setupJS()
-	} else if isDarwin {
-		ui = setupDarwin()
 	} else {
-		log.Fatalf("Unsupported runtime OS: %s", runtime.GOOS)
+		ui = setupDarwin()
 	}
 
 	// Run the UI

@@ -3,7 +3,6 @@ package sonification
 import (
 	"image/color"
 	"io"
-	"log"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/flac"
@@ -11,6 +10,7 @@ import (
 	"github.com/faiface/beep/vorbis"
 	"github.com/faiface/beep/wav"
 	"github.com/rytrose/pixelsound/api"
+	"github.com/rytrose/pixelsound/log"
 	"github.com/rytrose/pixelsound/util"
 )
 

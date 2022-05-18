@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"image"
-	"log"
 	"os"
 	"strings"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/nfnt/resize"
 	"github.com/rytrose/pixelsound/api"
+	"github.com/rytrose/pixelsound/log"
 	"github.com/rytrose/pixelsound/player"
 	"github.com/rytrose/pixelsound/sonification"
 	"github.com/rytrose/pixelsound/traversal"
