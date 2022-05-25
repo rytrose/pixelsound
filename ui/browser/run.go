@@ -5,6 +5,7 @@ package browser
 import (
 	"fmt"
 	"image"
+	"math"
 	"time"
 
 	"github.com/faiface/beep"
@@ -21,13 +22,21 @@ import (
 	"honnef.co/go/js/dom"
 )
 
+// Scale of traversal relative to displayed image. Must be between 0 and 1.
+// A value of 1 means traversal will be per pixel for the displayed image.
+// Values less than 1 traverse the image in fewer steps.
+const scale = 0.2
+const displayMaxHeight = 200
+const displayMaxWidth = 200
+
 type browser struct {
 	w      dom.Window
 	d      dom.Document
 	cv     *canvas.Canvas
 	cvc    *canvas.Context2D
 	cvIm   *canvasDOM.Element
-	im     image.Image
+	imd    image.Image // Image scaled to be displayed
+	imt    image.Image // Image scaled to be traversed
 	player *player.Player
 }
 
@@ -37,8 +46,6 @@ func NewBrowser() ui.UI {
 	d := w.Document()
 	cvHTML := d.GetElementByID("pixelsound")
 	cv := canvas.New(cvHTML.Underlying())
-	cv.Width = 100
-	cv.Height = 100
 	return &browser{
 		w:   w,
 		d:   d,
@@ -56,11 +63,21 @@ func (b *browser) Run() {
 		log.Fatalf("unable to load image %s: %s", imageFilename, err)
 	}
 
-	// Resize image to pretty small
-	b.im = resize.Resize(100, 0, im, resize.NearestNeighbor)
-	if err != nil {
-		log.Fatalf("unable to resize image: %s", err)
+	// Resize image for display
+	maxWidthDelta := math.Abs(float64(im.Bounds().Dx()) - float64(displayMaxWidth))
+	maxHeightDelta := math.Abs(float64(im.Bounds().Dy()) - float64(displayMaxHeight))
+	if maxWidthDelta < maxHeightDelta {
+		b.imd = resize.Resize(displayMaxWidth, 0, im, resize.NearestNeighbor)
+	} else {
+		b.imd = resize.Resize(0, displayMaxHeight, im, resize.NearestNeighbor)
 	}
+	// Update canvas size based on image
+	b.cv.Width = b.imd.Bounds().Dx()
+	b.cv.Height = b.imd.Bounds().Dy()
+
+	// Resize image for traversal
+	newWidth := uint(math.Floor(scale * float64(im.Bounds().Dx())))
+	b.imt = resize.Resize(newWidth, 0, im, resize.NearestNeighbor)
 
 	// Load image
 	loadedChan := make(chan struct{})
@@ -80,8 +97,8 @@ func (b *browser) Run() {
 		T: traversal.TtoBLtoR,
 		S: sonification.NewSineColor(sr),
 	}
-	b.player.SetImagePixelSound(b.im, ps)
-	b.player.Play(b.im, ps, image.Point{0, 0})
+	b.player.SetImagePixelSound(b.imt, ps)
+	b.player.Play(b.imt, ps, image.Point{0, 0})
 
 	// Draw initial image
 	b.drawImage()
@@ -93,7 +110,7 @@ func (b *browser) Run() {
 func (b *browser) run(t time.Duration) {
 	select {
 	case point := <-b.player.PointChan:
-		b.cvc.ClearRect(0, 0, 100, 100)
+		b.cvc.ClearRect(0, 0, float64(b.cv.Width), float64(b.cv.Height))
 		b.drawImage()
 		b.highlightPoint(point)
 	default:
@@ -104,14 +121,19 @@ func (b *browser) run(t time.Duration) {
 }
 
 func (b *browser) drawImage() {
-	b.cvc.DrawImage(b.cvIm, 0, 0, 100, 100)
+	b.cvc.DrawImage(b.cvIm, 0, 0, float64(b.cv.Width), float64(b.cv.Height))
 }
 
 func (b *browser) highlightPoint(p image.Point) {
+	red, green, blue, _ := util.Uint8RGBA(b.imt.At(p.X, p.Y))
+	displayPoint := image.Point{
+		X: int(math.Floor((float64(p.X) / float64(b.imt.Bounds().Dx())) * float64(b.imd.Bounds().Dx()))),
+		Y: int(math.Floor((float64(p.Y) / float64(b.imt.Bounds().Dy())) * float64(b.imd.Bounds().Dy()))),
+	}
+
 	b.cvc.StrokeStyle = "#000"
 	b.cvc.LineWidth = 1.0
-	b.cvc.StrokeRect(float64(p.X-6), float64(p.Y-6), 12, 12)
-	red, green, blue, _ := util.Uint8RGBA(b.im.At(p.X, p.Y))
+	b.cvc.StrokeRect(float64(displayPoint.X-6), float64(displayPoint.Y-6), 12, 12)
 	b.cvc.FillStyle = fmt.Sprintf("rgb(%d, %d, %d)", red, green, blue)
-	b.cvc.FillRect(float64(p.X-5), float64(p.Y-5), 10, 10)
+	b.cvc.FillRect(float64(displayPoint.X-5), float64(displayPoint.Y-5), 10, 10)
 }
