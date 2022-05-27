@@ -76,7 +76,10 @@ func (p *Player) Play(image image.Image, ps api.PixelSound, start image.Point) {
 	p.state = state
 
 	// Call the next pixel Streamer after the first is done
-	n := beep.Seq(s, beep.Callback(p.next))
+	n := beep.Seq(beep.Callback(func() {
+		// Send the first point
+		p.PointChan <- p.loc
+	}), s, beep.Callback(p.next))
 
 	// Start playback by adding to mixer
 	p.q.Add(n)

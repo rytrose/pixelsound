@@ -25,5 +25,8 @@ func setupJS() ui.UI {
 }
 
 func setupDarwin() ui.UI {
+	// Uncomment to generate embedded audio for browser UI
+	// generateEmbeddedAudio()
+
 	return thick.NewThickClient()
 }

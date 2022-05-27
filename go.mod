@@ -30,6 +30,7 @@ require (
 	github.com/mewkiz/flac v1.0.7 // indirect
 	github.com/mewkiz/pkg v0.0.0-20211102230744-16a6ce8f1b77 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/siongui/goef v0.0.0-20210610184109-d3b60554c5f3 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	golang.org/x/exp v0.0.0-20190306152737-a1d7652674e8 // indirect
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9 // indirect

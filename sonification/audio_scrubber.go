@@ -21,42 +21,39 @@ const resampleQuality = 3
 // of the provided audio buffer formatted with the provided extension.
 func NewAudioScrubber(r io.ReadCloser, ext string) api.SonifyFunc {
 	var audioStreamer beep.StreamSeekCloser
-	var audioFormat beep.Format
 	var err error
 	switch ext {
 	case "mp3":
-		audioStreamer, audioFormat, err = mp3.Decode(r)
+		audioStreamer, _, err = mp3.Decode(r)
 	case "wav":
-		audioStreamer, audioFormat, err = wav.Decode(r)
+		audioStreamer, _, err = wav.Decode(r)
 	case "ogg":
-		audioStreamer, audioFormat, err = vorbis.Decode(r)
+		audioStreamer, _, err = vorbis.Decode(r)
 	case "flac":
-		audioStreamer, audioFormat, err = flac.Decode(r)
+		audioStreamer, _, err = flac.Decode(r)
 	default:
 		log.Fatalf("unable to decode audio file with extension %s", ext)
 	}
 	if err != nil {
 		log.Fatalf("unable to decode audio: %s", err)
 	}
-	audioBuffer := beep.NewBuffer(audioFormat)
-	audioBuffer.Append(audioStreamer)
-	audioStreamer.Close()
-
+	// FIXME: will leak resources if beep.StreamSeekCloser actually needs to be closed
 	return func(c color.Color, sr beep.SampleRate, state interface{}) (beep.Streamer, interface{}) {
-		return audioScrubber(audioBuffer, audioStreamer, c, sr, state)
+		return audioScrubber(audioStreamer, c, sr, state)
 	}
 }
 
 // audioScrubber uses RGB to determine audio buffer playback location, number of samples, and speed.
-func audioScrubber(audioBuffer *beep.Buffer, audioStreamer beep.StreamSeekCloser, c color.Color, sr beep.SampleRate, state interface{}) (beep.Streamer, interface{}) {
+func audioScrubber(audioStreamer beep.StreamSeekCloser, c color.Color, sr beep.SampleRate, state interface{}) (beep.Streamer, interface{}) {
 	r, g, b, _ := util.FloatRGBA(c)
-	bufferLen := audioBuffer.Len()
+	bufferLen := audioStreamer.Len()
 	// G - duration
 	maxDurPercentage := 0.1
 	durSamples := int(maxDurPercentage * g * float64(bufferLen))
 	// R - location
 	startSample := int(r * float64(bufferLen-durSamples))
-	s := audioBuffer.Streamer(startSample, startSample+durSamples)
+	audioStreamer.Seek(startSample)
+	s := beep.Take(durSamples, audioStreamer)
 	// B - speed (resampling ratio)
 	var ratio float64
 	if b < 0.5 {

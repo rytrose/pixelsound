@@ -3,6 +3,7 @@
 package browser
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"math"
@@ -25,7 +26,7 @@ import (
 // Scale of traversal relative to displayed image. Must be between 0 and 1.
 // A value of 1 means traversal will be per pixel for the displayed image.
 // Values less than 1 traverse the image in fewer steps.
-const scale = 0.2
+const scale = 0.1
 const displayMaxHeight = 200
 const displayMaxWidth = 200
 
@@ -54,9 +55,24 @@ func NewBrowser() ui.UI {
 	}
 }
 
+type bytesReaderCloser struct {
+	*bytes.Reader
+}
+
+func (r bytesReaderCloser) Close() error { return nil }
+
 // Runs the browser UI using canvas.
 func (b *browser) Run() {
-	// Load image
+	// Load audio from file
+	audioFilename := "to-be-continued.mp3"
+	audioBytes, err := ReadFile(audioFilename)
+	if err != nil {
+		log.Fatalf("unable to load audio %s: %s", audioFilename, err)
+	}
+	r := bytesReaderCloser{bytes.NewReader(audioBytes)}
+	ext := "mp3"
+
+	// Load image from URL
 	imageFilename := "https://i1.sndcdn.com/avatars-000504525639-z2p212-t500x500.jpg"
 	im, dataURL, err := LoadImageFromURL(imageFilename)
 	if err != nil {
@@ -93,12 +109,32 @@ func (b *browser) Run() {
 	// Create PixelSound player
 	sr := beep.SampleRate(44100)
 	b.player = player.NewPlayer(sr, 2048)
+	// Load audio
 	ps := &api.PixelSounder{
-		T: traversal.TtoBLtoR,
-		S: sonification.NewSineColor(sr),
+		T: traversal.Random,
+		S: sonification.NewAudioScrubber(r, ext),
 	}
 	b.player.SetImagePixelSound(b.imt, ps)
 	b.player.Play(b.imt, ps, image.Point{0, 0})
+
+	go func() {
+		fileChan, err := readFilesFromInput(b.d, "audioFile")
+		if err != nil {
+			log.Fatalf("unable to read files from audioFile input: %s", err)
+			return
+		}
+
+		for file := range fileChan {
+			b.player.Pause()
+			r := bytesReaderCloser{bytes.NewReader(file)}
+			ext := "mp3"
+			ps := &api.PixelSounder{
+				T: traversal.Random,
+				S: sonification.NewAudioScrubber(r, ext),
+			}
+			b.player.Play(b.imt, ps, image.Point{0, 0})
+		}
+	}()
 
 	// Draw initial image
 	b.drawImage()
