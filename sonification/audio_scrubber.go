@@ -32,10 +32,10 @@ func NewAudioScrubber(r io.ReadCloser, ext string) api.SonifyFunc {
 	case "flac":
 		audioStreamer, _, err = flac.Decode(r)
 	default:
-		log.Fatalf("unable to decode audio file with extension %s", ext)
+		log.Printf("unable to decode audio file with extension %s", ext)
 	}
 	if err != nil {
-		log.Fatalf("unable to decode audio: %s", err)
+		log.Printf("unable to decode audio: %s", err)
 	}
 	// FIXME: will leak resources if beep.StreamSeekCloser actually needs to be closed
 	return func(c color.Color, sr beep.SampleRate, state interface{}) (beep.Streamer, interface{}) {

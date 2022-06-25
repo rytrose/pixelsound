@@ -3,12 +3,16 @@
 package browser
 
 import (
+	"bytes"
 	"fmt"
 	"syscall/js"
 
 	"github.com/rytrose/pixelsound/log"
 	"honnef.co/go/js/dom"
 )
+
+const audioInputID = "audioFile"
+const imageInputID = "imageFile"
 
 func readFilesFromInput(d dom.Document, id string) (chan []byte, error) {
 	input := d.QuerySelector(fmt.Sprintf("#%s", id))
@@ -21,7 +25,7 @@ func readFilesFromInput(d dom.Document, id string) (chan []byte, error) {
 	}
 
 	fileChan := make(chan []byte)
-	input.AddEventListener("change", true, func(e dom.Event) {
+	input.AddEventListener("change", false, func(e dom.Event) {
 		go func() {
 			fileObj := inputEl.Files()[0].Object
 			fileObj.Call("arrayBuffer").
@@ -35,10 +39,42 @@ func readFilesFromInput(d dom.Document, id string) (chan []byte, error) {
 				})).
 				Call("catch", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 					err := args[0]
-					log.Println("unable to get arrayBuffer from file input:", err)
+					log.Println("unable to get arrayBuffer from file input")
+					println(err)
 					return nil
 				}))
 		}()
 	})
 	return fileChan, nil
+}
+
+func (b *browser) readAudioFilesFromInput() {
+	fileChan, err := readFilesFromInput(b.d, audioInputID)
+	if err != nil {
+		log.Fatalf("unable to read files from #%s input: %s", audioInputID, err)
+		return
+	}
+
+	for file := range fileChan {
+		b.setAudio(bytesReaderCloser{bytes.NewReader(file)}, "mp3")
+		b.reloadCurrentMode()
+	}
+}
+
+func (b *browser) readImageFilesFromInput() {
+	fileChan, err := readFilesFromInput(b.d, imageInputID)
+	if err != nil {
+		log.Fatalf("unable to read files from #%s input: %s", imageInputID, err)
+		return
+	}
+
+	for file := range fileChan {
+		im, dataURL, err := decodeImage(file)
+		if err != nil {
+			log.Printf("unable to decode image from file: %s", err)
+			continue
+		}
+		b.setImage(im, dataURL)
+		b.reloadCurrentMode()
+	}
 }

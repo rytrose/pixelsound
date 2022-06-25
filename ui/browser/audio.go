@@ -10,9 +10,9 @@ import (
 	"net/http"
 )
 
-// LoadAudioFromURL loads mp3/wav/ogg audio given a URL to a valid file.
+// loadAudioFromURL loads mp3/wav/ogg audio given a URL to a valid file.
 // Requires the URL to have permissive CORS headers.
-func LoadAudioFromURL(url string) (io.ReadCloser, string, error) {
+func loadAudioFromURL(url string) (io.ReadCloser, string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, "", err
@@ -35,4 +35,9 @@ func LoadAudioFromURL(url string) (io.ReadCloser, string, error) {
 		return nil, "", fmt.Errorf("unable to handle content-type: %s", contentType)
 	}
 	return io.NopCloser(bytes.NewReader(d)), ext, nil
+}
+
+func (b *browser) setAudio(r bytesReaderCloser, ext string) {
+	b.r = r
+	b.ext = ext
 }

@@ -4,56 +4,28 @@ package browser
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"math"
 	"time"
 
 	"github.com/faiface/beep"
-	"github.com/nfnt/resize"
 	canvas "github.com/oskca/gopherjs-canvas"
 	canvasDOM "github.com/oskca/gopherjs-dom"
 	"github.com/rytrose/pixelsound/api"
-	"github.com/rytrose/pixelsound/log"
 	"github.com/rytrose/pixelsound/player"
 	"github.com/rytrose/pixelsound/sonification"
 	"github.com/rytrose/pixelsound/traversal"
 	"github.com/rytrose/pixelsound/ui"
-	"github.com/rytrose/pixelsound/util"
 	"honnef.co/go/js/dom"
 )
 
-// Scale of traversal relative to displayed image. Must be between 0 and 1.
-// A value of 1 means traversal will be per pixel for the displayed image.
-// Values less than 1 traverse the image in fewer steps.
-const scale = 0.1
-const displayMaxHeight = 200
-const displayMaxWidth = 200
+type mode int
 
-type browser struct {
-	w      dom.Window
-	d      dom.Document
-	cv     *canvas.Canvas
-	cvc    *canvas.Context2D
-	cvIm   *canvasDOM.Element
-	imd    image.Image // Image scaled to be displayed
-	imt    image.Image // Image scaled to be traversed
-	player *player.Player
-}
-
-// Returns a new browser UI for running on the web.
-func NewBrowser() ui.UI {
-	w := dom.GetWindow()
-	d := w.Document()
-	cvHTML := d.GetElementByID("pixelsound")
-	cv := canvas.New(cvHTML.Underlying())
-	return &browser{
-		w:   w,
-		d:   d,
-		cv:  cv,
-		cvc: cv.GetContext2D(),
-	}
-}
+const (
+	modeAlgorithm mode = iota
+	modeMouse
+	modeKeyboard
+)
 
 type bytesReaderCloser struct {
 	*bytes.Reader
@@ -61,115 +33,175 @@ type bytesReaderCloser struct {
 
 func (r bytesReaderCloser) Close() error { return nil }
 
-// Runs the browser UI using canvas.
-func (b *browser) Run() {
-	// Load audio from file
-	audioFilename := "to-be-continued.mp3"
-	audioBytes, err := ReadFile(audioFilename)
-	if err != nil {
-		log.Fatalf("unable to load audio %s: %s", audioFilename, err)
-	}
-	r := bytesReaderCloser{bytes.NewReader(audioBytes)}
-	ext := "mp3"
+type browser struct {
+	w        dom.Window
+	d        dom.Document
+	cv       *canvas.Canvas
+	cvc      *canvas.Context2D
+	cvEl     dom.Element
+	cvIm     *canvasDOM.Element
+	imd      image.Image       // Image scaled to be displayed
+	imt      image.Image       // Image scaled to be traversed
+	r        bytesReaderCloser // Audio file reader
+	ext      string            // Audio file extension
+	s        api.SonifyFunc
+	t        api.TraverseFunc
+	mode     mode
+	modeChan chan mode
+	player   *player.Player
+}
 
-	// Load image from URL
-	imageFilename := "https://i1.sndcdn.com/avatars-000504525639-z2p212-t500x500.jpg"
-	im, dataURL, err := LoadImageFromURL(imageFilename)
-	if err != nil {
-		log.Fatalf("unable to load image %s: %s", imageFilename, err)
-	}
-
-	// Resize image for display
-	maxWidthDelta := math.Abs(float64(im.Bounds().Dx()) - float64(displayMaxWidth))
-	maxHeightDelta := math.Abs(float64(im.Bounds().Dy()) - float64(displayMaxHeight))
-	if maxWidthDelta < maxHeightDelta {
-		b.imd = resize.Resize(displayMaxWidth, 0, im, resize.NearestNeighbor)
-	} else {
-		b.imd = resize.Resize(0, displayMaxHeight, im, resize.NearestNeighbor)
-	}
-	// Update canvas size based on image
-	b.cv.Width = b.imd.Bounds().Dx()
-	b.cv.Height = b.imd.Bounds().Dy()
-
-	// Resize image for traversal
-	newWidth := uint(math.Floor(scale * float64(im.Bounds().Dx())))
-	b.imt = resize.Resize(newWidth, 0, im, resize.NearestNeighbor)
-
-	// Load image
-	loadedChan := make(chan struct{})
-	imgEl := b.d.CreateElement("img")
-	imgEl.SetAttribute("src", dataURL.String())
-	imgEl.AddEventListener("load", false, func(el dom.Event) {
-		imgElCanvas := canvasDOM.WrapElement(el.Target().Underlying())
-		b.cvIm = imgElCanvas
-		loadedChan <- struct{}{}
-	})
-	<-loadedChan
+// Returns a new browser UI for running on the web.
+func NewBrowser() ui.UI {
+	// Create DOM references and elements
+	w := dom.GetWindow()
+	d := w.Document()
+	cvEl := d.GetElementByID("pixelsound")
+	cv := canvas.New(cvEl.Underlying())
 
 	// Create PixelSound player
 	sr := beep.SampleRate(44100)
-	b.player = player.NewPlayer(sr, 2048)
-	// Load audio
-	ps := &api.PixelSounder{
-		T: traversal.Random,
-		S: sonification.NewAudioScrubber(r, ext),
+	player := player.NewPlayer(sr, 2048, player.WithLatestPoint())
+
+	return &browser{
+		w:        w,
+		d:        d,
+		cv:       cv,
+		cvc:      cv.GetContext2D(),
+		cvEl:     cvEl,
+		modeChan: make(chan mode),
+		player:   player,
 	}
-	b.player.SetImagePixelSound(b.imt, ps)
-	b.player.Play(b.imt, ps, image.Point{0, 0})
-
-	go func() {
-		fileChan, err := readFilesFromInput(b.d, "audioFile")
-		if err != nil {
-			log.Fatalf("unable to read files from audioFile input: %s", err)
-			return
-		}
-
-		for file := range fileChan {
-			b.player.Pause()
-			r := bytesReaderCloser{bytes.NewReader(file)}
-			ext := "mp3"
-			ps := &api.PixelSounder{
-				T: traversal.Random,
-				S: sonification.NewAudioScrubber(r, ext),
-			}
-			b.player.Play(b.imt, ps, image.Point{0, 0})
-		}
-	}()
-
-	// Draw initial image
-	b.drawImage()
-
-	// Kick off animation loop
-	b.w.RequestAnimationFrame(b.run)
 }
 
-func (b *browser) run(t time.Duration) {
-	select {
-	case point := <-b.player.PointChan:
-		b.cvc.ClearRect(0, 0, float64(b.cv.Width), float64(b.cv.Height))
-		b.drawImage()
-		b.highlightPoint(point)
-	default:
+// Runs the browser UI using canvas.
+func (b *browser) Run() {
+	// Setup input readers
+	go b.readAudioFilesFromInput()
+	go b.readImageFilesFromInput()
+	go b.readModeFromInput()
+
+	// Kick off animation loop
+	b.w.RequestAnimationFrame(b.animate)
+
+	var removeMouseListener func()
+	var removeKeyboardListener func()
+	for newMode := range b.modeChan {
+		// Set current mode
+		b.mode = newMode
+
+		// Stop current playback
+		b.player.Stop()
+
+		// Clear input listeners
+		if removeMouseListener != nil {
+			removeMouseListener()
+		}
+		if removeKeyboardListener != nil {
+			removeKeyboardListener()
+		}
+
+		// Reset canvas
+		b.resetCanvas()
+
+		switch b.mode {
+		case modeAlgorithm:
+			b.player.Play(b.imt, &api.PixelSounder{
+				T: traversal.Random,
+				S: sonification.NewAudioScrubber(b.r, b.ext),
+			}, image.Point{0, 0})
+		case modeMouse:
+			lastTraversalPoint := image.Point{0, 0}
+			removeMouseListener = OnMouseMove(b.cvEl, func(p image.Point) {
+				traversalPoint := image.Point{
+					X: int(math.Floor((float64(p.X) / float64(b.imd.Bounds().Dx())) * float64(b.imt.Bounds().Dx()))),
+					Y: int(math.Floor((float64(p.Y) / float64(b.imd.Bounds().Dy())) * float64(b.imt.Bounds().Dy()))),
+				}
+				if (traversalPoint.X != lastTraversalPoint.X) ||
+					(traversalPoint.Y != lastTraversalPoint.Y) {
+					lastTraversalPoint = traversalPoint
+					go b.player.PlayPixel(traversalPoint, false)
+				}
+			})
+		case modeKeyboard:
+			lastTraversalPoint := image.Point{0, 0}
+			// Write point at origin to update highlight
+			b.player.PointLock.Lock()
+			b.player.LatestPoint = &lastTraversalPoint
+			b.player.PointLock.Unlock()
+			removeKeyboardListener = OnKeyboardMove(b.w, func(k keyCode) {
+				var p image.Point
+				switch k {
+				case keyLeft:
+					dx := b.imt.Bounds().Dx()
+					p = image.Point{
+						X: ((((lastTraversalPoint.X - 1) % dx) + dx) % dx),
+						Y: lastTraversalPoint.Y,
+					}
+				case keyRight:
+					dx := b.imt.Bounds().Dx()
+					p = image.Point{
+						X: ((((lastTraversalPoint.X + 1) % dx) + dx) % dx),
+						Y: lastTraversalPoint.Y,
+					}
+				case keyUp:
+					dy := b.imt.Bounds().Dy()
+					p = image.Point{
+						X: lastTraversalPoint.X,
+						Y: ((((lastTraversalPoint.Y - 1) % dy) + dy) % dy),
+					}
+				case keyDown:
+					dy := b.imt.Bounds().Dy()
+					p = image.Point{
+						X: lastTraversalPoint.X,
+						Y: ((((lastTraversalPoint.Y + 1) % dy) + dy) % dy),
+					}
+				}
+				lastTraversalPoint = p
+				b.player.PlayPixel(p, false)
+			})
+		}
+	}
+}
+
+func (b *browser) animate(t time.Duration) {
+	b.player.PointLock.HighPriorityLock()
+	point := b.player.LatestPoint
+	if point != nil {
+		b.player.LatestPoint = nil
+		b.player.PointLock.HighPriorityUnlock()
+
+		// Update highlight
+		b.resetCanvas()
+		b.drawPointHighlight(*point)
+	} else {
+		b.player.PointLock.HighPriorityUnlock()
 	}
 
 	// Schedule the next frame
-	b.w.RequestAnimationFrame(b.run)
+	b.w.RequestAnimationFrame(b.animate)
 }
 
-func (b *browser) drawImage() {
-	b.cvc.DrawImage(b.cvIm, 0, 0, float64(b.cv.Width), float64(b.cv.Height))
-}
-
-func (b *browser) highlightPoint(p image.Point) {
-	red, green, blue, _ := util.Uint8RGBA(b.imt.At(p.X, p.Y))
-	displayPoint := image.Point{
-		X: int(math.Floor((float64(p.X) / float64(b.imt.Bounds().Dx())) * float64(b.imd.Bounds().Dx()))),
-		Y: int(math.Floor((float64(p.Y) / float64(b.imt.Bounds().Dy())) * float64(b.imd.Bounds().Dy()))),
+func (b *browser) readModeFromInput() {
+	onChange := func(e dom.Event) {
+		var newMode mode
+		switch e.CurrentTarget().GetAttribute("id") {
+		case "algorithm":
+			newMode = modeAlgorithm
+		case "mouse":
+			newMode = modeMouse
+		case "keyboard":
+			newMode = modeKeyboard
+		}
+		b.modeChan <- newMode
 	}
 
-	b.cvc.StrokeStyle = "#000"
-	b.cvc.LineWidth = 1.0
-	b.cvc.StrokeRect(float64(displayPoint.X-6), float64(displayPoint.Y-6), 12, 12)
-	b.cvc.FillStyle = fmt.Sprintf("rgb(%d, %d, %d)", red, green, blue)
-	b.cvc.FillRect(float64(displayPoint.X-5), float64(displayPoint.Y-5), 10, 10)
+	for _, id := range []string{"algorithm", "mouse", "keyboard"} {
+		el := b.d.GetElementByID(id)
+		el.AddEventListener("change", false, onChange)
+	}
+}
+
+func (b *browser) reloadCurrentMode() {
+	b.modeChan <- b.mode
 }

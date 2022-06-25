@@ -94,7 +94,7 @@ func (c *thickClient) run() {
 
 	// Create PixelSound player
 	sr := beep.SampleRate(44100)
-	player := player.NewPlayer(sr, 2048)
+	player := player.NewPlayer(sr, 2048, player.WithPointChan())
 
 	// Instantiate and play PixelSound
 	t, ok := traversal.TraverseFuncs[*traverseFunc]

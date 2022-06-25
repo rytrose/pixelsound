@@ -6,12 +6,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Pixelsound</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.slim.min.js"></script>
 </head>
 
 <body>
     <canvas id="pixelsound"></canvas>
-    <input id="audioFile" type="file">
+    <div>
+        <div>
+            <label for="imageFile">Image File</label>
+            <input id="imageFile" type="file" accept=".jpg,.jpeg,.png,.gif">
+        </div>
+        <div>
+            <label for="audioFile">Audio File</label>
+            <input id="audioFile" type="file" accept=".mp3">
+        </div>
+        <div id="modes">
+            <input type="radio" name="mode" value="algorithm" id="algorithm" checked>
+            <label for="algorithm">Algorithm</label>
+            <input type="radio" name="mode" value="mouse" id="mouse">
+            <label for="mouse">Mouse</label>
+            <input type="radio" name="mode" value="keyboard" id="keyboard">
+            <label for="keyboard">Keyboard</label>
+        </div>
+    </div>
     <script src="pixelsound.js"></script>
+    <!-- prevent keystrokes from changing radio buttons -->
+    <script>
+        $('input[type="radio"]').keydown(function (e) {
+            var arrowKeys = [37, 38, 39, 40];
+            if (arrowKeys.indexOf(e.which) !== -1) {
+                $(this).blur();
+                if (e.which == 38) {
+                    var y = $(window).scrollTop();
+                    $(window).scrollTop(y - 10);
+                }
+                else if (e.which == 40) {
+                    var y = $(window).scrollTop();
+                    $(window).scrollTop(y + 10);
+                }
+                return false;
+            }
+        });
+    </script>
 </body>
 
 </html>
