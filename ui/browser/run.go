@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"image"
 	"math"
+	"syscall/js"
 	"time"
 
 	"github.com/faiface/beep"
@@ -56,26 +57,36 @@ func NewBrowser() ui.UI {
 	// Create DOM references and elements
 	w := dom.GetWindow()
 	d := w.Document()
-	cvEl := d.GetElementByID("pixelsound")
-	cv := canvas.New(cvEl.Underlying())
-
-	// Create PixelSound player
-	sr := beep.SampleRate(44100)
-	player := player.NewPlayer(sr, 2048, player.WithLatestPoint())
 
 	return &browser{
 		w:        w,
 		d:        d,
-		cv:       cv,
-		cvc:      cv.GetContext2D(),
-		cvEl:     cvEl,
 		modeChan: make(chan mode),
-		player:   player,
 	}
 }
 
-// Runs the browser UI using canvas.
+// Run sets the run function on the global javascript scope.
 func (b *browser) Run() {
+	js.Global().Set("golangRun", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		go b.run()
+		return nil
+	}))
+}
+
+// run powers pixelsound on an HTML canvas.
+func (b *browser) run() {
+	// TODO: refactor
+	return
+
+	// Setup player
+	sr := beep.SampleRate(44100)
+	b.player = player.NewPlayer(sr, 2048, player.WithLatestPoint())
+
+	// Setup canvas elements
+	b.cvEl = b.d.GetElementByID("pixelsound")
+	b.cv = canvas.New(b.cvEl.Underlying())
+	b.cvc = b.cv.GetContext2D()
+
 	// Setup input readers
 	go b.readAudioFilesFromInput()
 	go b.readImageFilesFromInput()
