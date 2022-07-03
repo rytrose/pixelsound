@@ -8,7 +8,7 @@ const RadioOption = ({
   const id = `radio-option-${value}`;
 
   return (
-    <div className="flex grow basis-0 justify-center">
+    <div className="flex">
       <input
         type="radio"
         name={name}
@@ -35,12 +35,12 @@ const Modes = ({ onChange }) => {
   return (
     <div>
       <h2
-        className="flex justify-center pb-2
+        className="flex pb-3 pl-3
         font-serif text-xl"
       >
         Mode
       </h2>
-      <div className="flex sm:max-w-sm sm:mx-auto">
+      <div className="flex gap-4 pl-3">
         <RadioOption
           name="mode"
           value="mouse"

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const Modal = ({ children, onClose }) => {
+const Modal = ({ onClose, children }) => {
   const dialogEl = useRef();
   const [dialogOpened, setDialogOpened] = useState(false);
 

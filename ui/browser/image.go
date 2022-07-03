@@ -36,3 +36,15 @@ func decodeImage(b []byte) (image.Image, *dataurl.DataURL, error) {
 	dataURL := dataurl.New(b, http.DetectContentType(b))
 	return im, dataURL, nil
 }
+
+func decodeImageFromDataURL(s string) (image.Image, error) {
+	dataURL, err := dataurl.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	im, _, err := image.Decode(bytes.NewReader(dataURL.Data))
+	if err != nil {
+		return nil, err
+	}
+	return im, nil
+}

@@ -13,6 +13,7 @@ import (
 	canvas "github.com/oskca/gopherjs-canvas"
 	canvasDOM "github.com/oskca/gopherjs-dom"
 	"github.com/rytrose/pixelsound/api"
+	"github.com/rytrose/pixelsound/log"
 	"github.com/rytrose/pixelsound/player"
 	"github.com/rytrose/pixelsound/sonification"
 	"github.com/rytrose/pixelsound/traversal"
@@ -41,6 +42,7 @@ type browser struct {
 	cvc      *canvas.Context2D
 	cvEl     dom.Element
 	cvIm     *canvasDOM.Element
+	im       image.Image
 	imd      image.Image       // Image scaled to be displayed
 	imt      image.Image       // Image scaled to be traversed
 	r        bytesReaderCloser // Audio file reader
@@ -65,22 +67,36 @@ func NewBrowser() ui.UI {
 	}
 }
 
-// Run sets the run function on the global javascript scope.
+// Run sets functions on the JS window.
 func (b *browser) Run() {
-	js.Global().Set("golangRun", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		go b.run()
+	js.Global().Set("golangSetup", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		go b.setup()
 		return nil
 	}))
+
+	js.Global().Set("golangUpdateImage", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		go b.updateImage(args[0].String())
+		return nil
+	}))
+
+	js.Global().Set("golangUpdateAudio", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		go b.updateAudio(args[0].String())
+		return nil
+	}))
+
+	js.Global().Call("jsGolangReady");
+}
+
+func (b *browser) setup() {
+	// Setup player
+	sr := beep.SampleRate(44100)
+	b.player = player.NewPlayer(sr, 2048, player.WithLatestPoint())
 }
 
 // run powers pixelsound on an HTML canvas.
 func (b *browser) run() {
 	// TODO: refactor
 	return
-
-	// Setup player
-	sr := beep.SampleRate(44100)
-	b.player = player.NewPlayer(sr, 2048, player.WithLatestPoint())
 
 	// Setup canvas elements
 	b.cvEl = b.d.GetElementByID("pixelsound")
@@ -89,7 +105,6 @@ func (b *browser) run() {
 
 	// Setup input readers
 	go b.readAudioFilesFromInput()
-	go b.readImageFilesFromInput()
 	go b.readModeFromInput()
 
 	// Kick off animation loop
@@ -191,6 +206,25 @@ func (b *browser) animate(t time.Duration) {
 
 	// Schedule the next frame
 	b.w.RequestAnimationFrame(b.animate)
+}
+
+func (b *browser) updateImage(dataURLString string) {
+	im, err := decodeImageFromDataURL(dataURLString)
+	if err != nil {
+		log.Println("unable to decode image from data URL", err)
+	}
+	b.im = im
+	js.Global().Call("jsImageUpdated")
+}
+
+func (b *browser) updateAudio(dataURLString string) {
+	data, ext, err := decodeAudioFromDataURL(dataURLString)
+	if err != nil {
+		log.Println("unable to decode audio from data URL", err)
+	}
+	b.r = bytesReaderCloser{bytes.NewReader(data)}
+	b.ext = ext
+	js.Global().Call("jsAudioUpdated")
 }
 
 func (b *browser) readModeFromInput() {

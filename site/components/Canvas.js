@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import useResizeObserver from "use-resize-observer";
 import FileInput from "./FileInput";
 
-const Canvas = ({ onImageChange, image, className }) => {
+const Canvas = ({ image, loadingImage, className }) => {
   const ref = useRef();
   const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const { width, height } = useResizeObserver({ ref });
@@ -16,31 +16,31 @@ const Canvas = ({ onImageChange, image, className }) => {
   }, [width, height, ref]);
 
   return (
-    <div className={"flex flex-col gap-4 items-center p-3 " + className}>
+    <div className={"flex justify-center p-3 " + className}>
       {image ? (
-        <div className="relative">
-          <div ref={ref}>
-            <Image
-              src={image.src}
-              width={image.width}
-              height={image.height}
-              alt="Image being sonified"
-              className="peer absolute top-0 left-0 z-0 rounded-md shadow-md"
-            />
+        <div className="overflow-hidden rounded-lg">
+          <div className={"relative" + (loadingImage ? " blur-xl" : "")}>
+            <div ref={ref}>
+              <Image
+                src={image.src}
+                width={image.width}
+                height={image.height}
+                alt="Image being sonified"
+                className="peer absolute top-0 left-0 z-0 rounded-md shadow-md"
+              />
+            </div>
+            <canvas
+              id="pixelsound"
+              width={canvasSize.width}
+              height={canvasSize.height}
+              className="absolute top-0 left-0 z-10"
+            ></canvas>
+            {loadingImage && <p>Loading</p>}
           </div>
-          <canvas
-            id="pixelsound"
-            width={canvasSize.width}
-            height={canvasSize.height}
-            className="absolute top-0 left-0 z-10 rounded-md"
-          ></canvas>
         </div>
       ) : (
         <div className="animate-pulse bg-slate-100 w-48 h-48 rounded-md shadow-md"></div>
       )}
-      <FileInput onChange={onImageChange} accept=".jpg,.jpeg,.png,.gif">
-        Select an image
-      </FileInput>
     </div>
   );
 };

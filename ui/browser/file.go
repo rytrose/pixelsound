@@ -60,21 +60,3 @@ func (b *browser) readAudioFilesFromInput() {
 		b.reloadCurrentMode()
 	}
 }
-
-func (b *browser) readImageFilesFromInput() {
-	fileChan, err := readFilesFromInput(b.d, imageInputID)
-	if err != nil {
-		log.Fatalf("unable to read files from #%s input: %s", imageInputID, err)
-		return
-	}
-
-	for file := range fileChan {
-		im, dataURL, err := decodeImage(file)
-		if err != nil {
-			log.Printf("unable to decode image from file: %s", err)
-			continue
-		}
-		b.setImage(im, dataURL)
-		b.reloadCurrentMode()
-	}
-}
