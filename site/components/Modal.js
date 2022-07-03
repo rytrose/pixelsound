@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const Modal = ({ children, onClose }) => {
-  const dialogEl = useRef(null);
+  const dialogEl = useRef();
   const [dialogOpened, setDialogOpened] = useState(false);
 
   // Required to trigger the opacity transition :(

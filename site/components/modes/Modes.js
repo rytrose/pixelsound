@@ -23,7 +23,7 @@ const RadioOption = ({
         className="outline-none select-none cursor-pointer 
        p-2 rounded-xl text-black
       bg-violet-300 hover:bg-violet-400
-      peer-checked:bg-violet-600 active:bg-violet-600"
+      peer-checked:bg-violet-600 active:bg-violet-500"
       >
         {children}
       </label>
