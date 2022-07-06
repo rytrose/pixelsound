@@ -1,6 +1,7 @@
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Button from "../components/Button";
 import Canvas from "../components/Canvas";
 import Controls from "../components/Controls";
@@ -8,42 +9,47 @@ import Header from "../components/Header";
 import Loading from "../components/Loading";
 import Modal from "../components/Modal";
 
+const Waveform = dynamic(() => import("../components/Waveform"), {
+  ssr: false,
+});
+
 const Home = () => {
   const [loading, setLoading] = useState(true);
   const [started, setStarted] = useState(false);
   const [image, setImage] = useState();
+  const [audio, setAudio] = useState();
   const [loadingImage, setLoadingImage] = useState(true);
+  const [loadingAudio, setLoadingAudio] = useState(true);
 
-  const start = () => {
+  const start = useCallback(() => {
     setStarted(true);
     // Made available globally by golang code
     window.golangSetup();
-  };
+  }, []);
 
   // Called when golang code has finished populating the window
-  const golangReady = () => {
+  const golangReady = useCallback(() => {
     setLoading(false);
-  };
+  }, []);
 
   // Called when golang code has finished updating the image
-  const imageUpdated = () => {
+  const imageUpdated = useCallback(() => {
     setLoadingImage(false);
-  };
+  }, []);
 
   // Called when golang code has finished updating the audio
-  const audioUpdated = () => {
-    // TODO
-    console.log("audio updated");
-  };
+  const audioUpdated = useCallback(() => {
+    setLoadingAudio(false);
+  }, []);
 
   // Setup functions exposed to golang on window
   useEffect(() => {
     window.jsGolangReady = golangReady;
     window.jsImageUpdated = imageUpdated;
     window.jsAudioUpdated = audioUpdated;
-  }, []);
+  }, [golangReady, imageUpdated, audioUpdated]);
 
-  const onImageChange = (e) => {
+  const onImageChange = useCallback((e) => {
     const input = e.target;
     if (input.files && input.files[0]) {
       // Reset the image to placeholder
@@ -64,29 +70,32 @@ const Home = () => {
       };
       reader.readAsDataURL(input.files[0]);
     }
-  };
+  }, []);
 
-  const onAudioChange = (e) => {
+  const onAudioChange = useCallback((e) => {
     const input = e.target;
     if (input.files && input.files[0]) {
       // Mark the audio as loading until golang has updated
+      setLoadingAudio(true);
+
+      // Display the audio
+      setAudio(input.files[0]);
 
       // Read the file and update in JS and golang
       const reader = new FileReader();
       reader.onload = (e) => {
-        // Display the audio
-
         // Made available globally by golang code
         window.golangUpdateAudio(e.target.result);
       };
+      // Read the audio for golang
       reader.readAsDataURL(input.files[0]);
     }
-  };
-  const onModeChange = (e) => console.log(e.target);
+  }, []);
+
+  const onModeChange = useCallback((e) => console.log(e.target), []);
 
   return (
     <>
-      <Script src="https://code.jquery.com/jquery-3.6.0.slim.min.js"></Script>
       <Script src="/pixelsound.js"></Script>
 
       <Head>
@@ -113,12 +122,15 @@ const Home = () => {
       </Modal>
 
       <div className={started ? "visible" : "invisible"}>
-        <Header className="border-b-[1px] border-slate-300"></Header>
-        <Canvas
-          loadingImage={loadingImage}
-          image={image}
-          className="border-b-[1px] border-slate-300"
-        ></Canvas>
+        <div className="border-b-[1px] border-slate-300">
+          <Header />
+        </div>
+        <div className="p-3 border-b-[1px] border-slate-300">
+          <div className="flex flex-col gap-3 max-w-lg items-center mx-auto">
+            <Canvas loadingImage={loadingImage} image={image}></Canvas>
+            <Waveform loadingAudio={loadingAudio} audio={audio}></Waveform>
+          </div>
+        </div>
         <Controls
           onImageChange={onImageChange}
           onAudioChange={onAudioChange}

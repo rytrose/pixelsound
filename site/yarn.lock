@@ -1878,6 +1878,16 @@
   "resolved" "https://registry.npmjs.org/v8-compile-cache/-/v8-compile-cache-2.3.0.tgz"
   "version" "2.3.0"
 
+"wavesurfer-react@^2.2.1":
+  "integrity" "sha512-fhbEn6rIdv86o/DpaPAr8hzVc5As727UCqOSNfVxzYSIsKRQSmx06tvhqIbTK6H95a85ySlf4y+cb5sS+Yrb9A=="
+  "resolved" "https://registry.npmjs.org/wavesurfer-react/-/wavesurfer-react-2.2.1.tgz"
+  "version" "2.2.1"
+
+"wavesurfer.js@^4.0.0 || ^5.0.0 || ^6.0.0":
+  "integrity" "sha512-yuOteX+RKgJl4p5V+YNflm79QRNFWpNo0UHtKaGf1G05qMNChfbcJU0MZYL7+OJTHgYszYqN3dgUXjugYd/Iew=="
+  "resolved" "https://registry.npmjs.org/wavesurfer.js/-/wavesurfer.js-6.2.0.tgz"
+  "version" "6.2.0"
+
 "which-boxed-primitive@^1.0.2":
   "integrity" "sha512-bwZdv0AKLpplFY2KZRX6TvyuN7ojjr7lwkg6ml0roIy9YeuSr7JS372qlNW18UQYzgYK9ziGcerWqZOmEn9VNg=="
   "resolved" "https://registry.npmjs.org/which-boxed-primitive/-/which-boxed-primitive-1.0.2.tgz"

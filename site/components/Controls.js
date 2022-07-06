@@ -3,8 +3,8 @@ import Modes from "./modes/Modes";
 
 const Controls = ({ onImageChange, onAudioChange, onModeChange }) => {
   return (
-    <div className="flex flex-col py-3">
-      <div className="flex gap-4 pl-3 pb-3">
+    <div className="flex flex-col max-w-lg items-center mx-auto">
+      <div className="flex flex-wrap truncate gap-4 p-3">
         <FileInput onChange={onImageChange} accept=".jpg,.jpeg,.png">
           Select an image
         </FileInput>

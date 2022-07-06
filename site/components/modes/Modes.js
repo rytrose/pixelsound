@@ -33,14 +33,9 @@ const RadioOption = ({
 
 const Modes = ({ onChange }) => {
   return (
-    <div>
-      <h2
-        className="flex pb-3 pl-3
-        font-serif text-xl"
-      >
-        Mode
-      </h2>
-      <div className="flex gap-4 pl-3">
+    <div className="p-3">
+      <h2 className="font-serif text-xl text-center">Mode</h2>
+      <div className="flex flex-wrap gap-4 p-3">
         <RadioOption
           name="mode"
           value="mouse"
