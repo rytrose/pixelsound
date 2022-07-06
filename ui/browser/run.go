@@ -150,13 +150,17 @@ func (b *browser) setMode(newMode mode) {
 		b.removeKeyboardListener()
 	}
 
+	updateWaveform := func(p float64) {
+		js.Global().Call("jsUpdateWaveform", p)
+	}
+
 	switch b.mode {
 	case modeAlgorithm:
 		// TODO: figure out how to handle resizing of canvas
 		b.player.Play(b.im, &api.PixelSounder{
 			T: traversal.Random,
 			S: sonification.NewAudioScrubber(b.r, b.ext),
-		}, image.Point{0, 0})
+		}, image.Point{0, 0}, updateWaveform)
 	case modeMouse:
 		lastTraversalPoint := image.Point{0, 0}
 		b.removeMouseListener = OnMouseMove(b.cvEl, func(p image.Point, width int, height int) {
@@ -172,7 +176,7 @@ func (b *browser) setMode(newMode mode) {
 				if (traversalPoint.X != lastTraversalPoint.X) ||
 					(traversalPoint.Y != lastTraversalPoint.Y) {
 					lastTraversalPoint = traversalPoint
-					go b.player.PlayPixel(traversalPoint, false)
+					go b.player.PlayPixel(traversalPoint, false, updateWaveform)
 				}
 			}
 		})
@@ -213,7 +217,7 @@ func (b *browser) setMode(newMode mode) {
 					}
 				}
 				lastTraversalPoint = p
-				b.player.PlayPixel(p, false)
+				b.player.PlayPixel(p, false, updateWaveform)
 			}
 		})
 	}

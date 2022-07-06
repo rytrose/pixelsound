@@ -101,7 +101,7 @@ func (p *Player) SetPixelSound(ps api.PixelSound) {
 }
 
 // Play plays a provided PixelSound for an image starting from provided coordinates.
-func (p *Player) Play(image image.Image, ps api.PixelSound, start image.Point) {
+func (p *Player) Play(image image.Image, ps api.PixelSound, start image.Point, state interface{}) {
 	// Save playing image, PixelSound, and starting coordinates
 	p.i = image
 	p.ps = ps
@@ -111,7 +111,7 @@ func (p *Player) Play(image image.Image, ps api.PixelSound, start image.Point) {
 	p.q.Clear()
 
 	// Get the first pixel Streamer
-	s, state := ps.Sonify(p.i.At(p.loc.X, p.loc.Y), p.sr, nil)
+	s, state := ps.Sonify(p.i.At(p.loc.X, p.loc.Y), p.sr, state)
 	p.state = state
 
 	// Call the next pixel Streamer after the first is done
@@ -143,10 +143,14 @@ func (p *Player) next() {
 }
 
 // PlayPixel plays the pixel at the provided point.
-func (p *Player) PlayPixel(point image.Point, queue bool) {
+func (p *Player) PlayPixel(point image.Point, queue bool, state interface{}) {
 	p.loc = point
 	p.updatePoint()
-	s, state := p.ps.Sonify(p.i.At(point.X, point.Y), p.sr, p.state)
+	sonifyState := p.state
+	if state != nil {
+		sonifyState = state
+	}
+	s, state := p.ps.Sonify(p.i.At(point.X, point.Y), p.sr, sonifyState)
 	p.state = state
 	if !queue {
 		p.q.Clear()

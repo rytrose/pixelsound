@@ -65,5 +65,12 @@ func audioScrubber(audioStreamer beep.StreamSeekCloser, c color.Color, sr beep.S
 	}
 	resampledStreamer := beep.ResampleRatio(resampleQuality, ratio, s)
 
-	return resampledStreamer, nil
+	updateWaveform, ok := state.(func(float64))
+	if ok {
+		updateWaveform(float64(startSample) / float64(bufferLen))
+	} else {
+		log.Println("state was not expected function:", state)
+	}
+
+	return resampledStreamer, state
 }
