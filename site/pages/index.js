@@ -22,7 +22,6 @@ const Home = () => {
   const [loadingAudio, setLoadingAudio] = useState(true);
 
   const start = useCallback(() => {
-    setStarted(true);
     // Made available globally by golang code
     window.golangSetup();
   }, []);
@@ -30,6 +29,11 @@ const Home = () => {
   // Called when golang code has finished populating the window
   const golangReady = useCallback(() => {
     setLoading(false);
+  }, []);
+
+  // Called when golang code has finished setting up
+  const golangSetup = useCallback(() => {
+    setStarted(true);
   }, []);
 
   // Called when golang code has finished updating the image
@@ -44,10 +48,16 @@ const Home = () => {
 
   // Setup functions exposed to golang on window
   useEffect(() => {
-    window.jsGolangReady = golangReady;
-    window.jsImageUpdated = imageUpdated;
-    window.jsAudioUpdated = audioUpdated;
-  }, [golangReady, imageUpdated, audioUpdated]);
+    if (!window.jsGolangReady) window.jsGolangReady = golangReady;
+    if (!window.jsGolangSetup) window.jsGolangSetup = golangSetup;
+    if (!window.jsImageUpdated) window.jsImageUpdated = imageUpdated;
+    if (!window.jsAudioUpdated) window.jsAudioUpdated = audioUpdated;
+    // Run golang logic that depends on elements
+    if (!loading && started) {
+      // Made available globally by golang code
+      window.golangRun();
+    }
+  }, [golangReady, golangSetup, imageUpdated, audioUpdated, loading, started]);
 
   const onImageChange = useCallback((e) => {
     const input = e.target;

@@ -90,6 +90,16 @@ func (p *Player) SetImagePixelSound(image image.Image, ps api.PixelSound) {
 	p.ps = ps
 }
 
+// SetImagePixelSound sets the current image.
+func (p *Player) SetImage(image image.Image) {
+	p.i = image
+}
+
+// SetPixelSound sets the current PixelSound.
+func (p *Player) SetPixelSound(ps api.PixelSound) {
+	p.ps = ps
+}
+
 // Play plays a provided PixelSound for an image starting from provided coordinates.
 func (p *Player) Play(image image.Image, ps api.PixelSound, start image.Point) {
 	// Save playing image, PixelSound, and starting coordinates

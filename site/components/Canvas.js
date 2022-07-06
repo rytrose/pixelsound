@@ -9,17 +9,20 @@ const Canvas = ({ image, loadingImage }) => {
 
   useEffect(() => {
     if (!!ref.current) {
-      const rect = ref.current.children[0].getBoundingClientRect();
-      setCanvasSize({ width: rect.width, height: rect.height });
+      const image = ref.current.children[0];
+      if (!!image) {
+        const rect = image.getBoundingClientRect();
+        setCanvasSize({ width: rect.width, height: rect.height });
+      }
     }
   }, [width, height, ref]);
 
   return (
     <>
-      {image ? (
-        <div className="overflow-hidden rounded-lg">
-          <div className={"relative" + (loadingImage ? " blur-xl" : "")}>
-            <div ref={ref}>
+      <div className={`overflow-hidden rounded-lg ${image ? "" : "hidden"}`}>
+        <div className={"relative" + (loadingImage ? " blur-xl" : "")}>
+          <div ref={ref}>
+            {image && (
               <Image
                 src={image.src}
                 width={image.width}
@@ -27,18 +30,21 @@ const Canvas = ({ image, loadingImage }) => {
                 alt="Image being sonified"
                 className="absolute top-0 left-0 rounded-md shadow-md"
               />
-            </div>
-            <canvas
-              id="pixelsound"
-              width={canvasSize.width}
-              height={canvasSize.height}
-              className="absolute top-0 left-0"
-            ></canvas>
+            )}
           </div>
+          <canvas
+            id="pixelsound"
+            width={canvasSize.width}
+            height={canvasSize.height}
+            className="absolute top-0 left-0"
+          ></canvas>
         </div>
-      ) : (
-        <div className="animate-pulse bg-slate-100 w-48 h-48 rounded-md shadow-md"></div>
-      )}
+      </div>
+      <div
+        className={`animate-pulse bg-slate-100 w-48 h-48 rounded-md shadow-md ${
+          image ? "hidden" : ""
+        }`}
+      ></div>
     </>
   );
 };
