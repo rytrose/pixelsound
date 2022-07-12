@@ -19,7 +19,7 @@ func (b *browser) resetCanvas() {
 	b.cvc.ClearRect(0, 0, float64(b.cv.Width), float64(b.cv.Height))
 }
 
-// drawPointHighlight takes a point in the traversal scale and highlights it in the display scale.
+// drawPointHighlight takes a point on the canvas and highlights it.
 func (b *browser) drawPointHighlight(p image.Point) {
 	width := b.cvEl.Underlying().Get("width").Int()
 	height := b.cvEl.Underlying().Get("height").Int()

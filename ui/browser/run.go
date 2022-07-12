@@ -22,14 +22,6 @@ import (
 	"honnef.co/go/js/dom"
 )
 
-type mode int32
-
-const (
-	modeAlgorithm mode = iota
-	modeMouse
-	modeKeyboard
-)
-
 type loadingState int32
 
 const (
@@ -44,20 +36,18 @@ type bytesReaderCloser struct {
 func (r bytesReaderCloser) Close() error { return nil }
 
 type browser struct {
-	w                      dom.Window
-	d                      dom.Document
-	cv                     *canvas.Canvas
-	cvc                    *canvas.Context2D
-	cvEl                   dom.Element
-	cvIm                   *canvasDOM.Element
-	im                     image.Image
-	r                      *bytesReaderCloser // Audio file reader
-	ext                    string             // Audio file extension
-	loadingState           loadingState
-	mode                   mode
-	removeMouseListener    func()
-	removeKeyboardListener func()
-	player                 *player.Player
+	w                   dom.Window
+	d                   dom.Document
+	cv                  *canvas.Canvas
+	cvc                 *canvas.Context2D
+	cvEl                dom.Element
+	cvIm                *canvasDOM.Element
+	im                  image.Image
+	r                   *bytesReaderCloser // Audio file reader
+	ext                 string             // Audio file extension
+	loadingState        loadingState
+	removeMouseListener func()
+	player              *player.Player
 }
 
 // Returns a new browser UI for running on the web.
@@ -115,8 +105,30 @@ func (b *browser) run() {
 	// Kick off animation loop
 	b.w.RequestAnimationFrame(b.animate)
 
-	// Set intial mode
-	b.setMode(modeMouse)
+	// Start mouse-based audio
+	updateWaveform := func(progress float64) {
+		js.Global().Call("jsUpdateWaveform", progress)
+	}
+	lastTraversalPoint := image.Point{0, 0}
+	b.removeMouseListener = OnMouseMove(b.cvEl, func(p image.Point, width int, height int) {
+		// TODO add fidelity slider to "lower the resolution"
+
+		if b.getLoadingState() != loading && b.im != nil && b.r != nil {
+			// p is the location relative to the size of the canvas.
+			// width and height are the current size of the canvas.
+			// Translate the relative location to the corresponding
+			// location on the original sized image.
+			traversalPoint := image.Point{
+				X: int(math.Floor((float64(p.X) / float64(width)) * float64(b.im.Bounds().Dx()))),
+				Y: int(math.Floor((float64(p.Y) / float64(height)) * float64(b.im.Bounds().Dy()))),
+			}
+			if (traversalPoint.X != lastTraversalPoint.X) ||
+				(traversalPoint.Y != lastTraversalPoint.Y) {
+				lastTraversalPoint = traversalPoint
+				go b.player.PlayPixel(traversalPoint, false, updateWaveform)
+			}
+		}
+	})
 }
 
 func (b *browser) animate(t time.Duration) {
@@ -133,94 +145,6 @@ func (b *browser) animate(t time.Duration) {
 
 	// Schedule the next frame
 	b.w.RequestAnimationFrame(b.animate)
-}
-
-func (b *browser) setMode(newMode mode) {
-	// Set current mode
-	b.mode = newMode
-
-	// Stop current playback
-	b.player.Stop()
-
-	// Clear input listeners
-	if b.removeMouseListener != nil {
-		b.removeMouseListener()
-	}
-	if b.removeKeyboardListener != nil {
-		b.removeKeyboardListener()
-	}
-
-	updateWaveform := func(p float64) {
-		js.Global().Call("jsUpdateWaveform", p)
-	}
-
-	switch b.mode {
-	case modeAlgorithm:
-		// TODO: figure out how to handle resizing of canvas
-		b.player.Play(b.im, &api.PixelSounder{
-			T: traversal.Random,
-			S: sonification.NewAudioScrubber(b.r, b.ext),
-		}, image.Point{0, 0}, updateWaveform)
-	case modeMouse:
-		lastTraversalPoint := image.Point{0, 0}
-		b.removeMouseListener = OnMouseMove(b.cvEl, func(p image.Point, width int, height int) {
-			if b.getLoadingState() != loading && b.im != nil && b.r != nil {
-				// p is the location relative to the size of the canvas.
-				// width and height are the current size of the canvas.
-				// Translate the relative location to the corresponding
-				// location on the original sized image.
-				traversalPoint := image.Point{
-					X: int(math.Floor((float64(p.X) / float64(width)) * float64(b.im.Bounds().Dx()))),
-					Y: int(math.Floor((float64(p.Y) / float64(height)) * float64(b.im.Bounds().Dy()))),
-				}
-				if (traversalPoint.X != lastTraversalPoint.X) ||
-					(traversalPoint.Y != lastTraversalPoint.Y) {
-					lastTraversalPoint = traversalPoint
-					go b.player.PlayPixel(traversalPoint, false, updateWaveform)
-				}
-			}
-		})
-	case modeKeyboard:
-		lastTraversalPoint := image.Point{0, 0}
-		// Write point at origin to update highlight
-		b.player.PointLock.Lock()
-		b.player.LatestPoint = &lastTraversalPoint
-		b.player.PointLock.Unlock()
-		// TODO: figure out how to handle resizing of canvas
-		b.removeKeyboardListener = OnKeyboardMove(b.w, func(k keyCode) {
-			if b.getLoadingState() != loading && b.im != nil && b.r != nil {
-				var p image.Point
-				switch k {
-				case keyLeft:
-					dx := b.im.Bounds().Dx()
-					p = image.Point{
-						X: ((((lastTraversalPoint.X - 1) % dx) + dx) % dx),
-						Y: lastTraversalPoint.Y,
-					}
-				case keyRight:
-					dx := b.im.Bounds().Dx()
-					p = image.Point{
-						X: ((((lastTraversalPoint.X + 1) % dx) + dx) % dx),
-						Y: lastTraversalPoint.Y,
-					}
-				case keyUp:
-					dy := b.im.Bounds().Dy()
-					p = image.Point{
-						X: lastTraversalPoint.X,
-						Y: ((((lastTraversalPoint.Y - 1) % dy) + dy) % dy),
-					}
-				case keyDown:
-					dy := b.im.Bounds().Dy()
-					p = image.Point{
-						X: lastTraversalPoint.X,
-						Y: ((((lastTraversalPoint.Y + 1) % dy) + dy) % dy),
-					}
-				}
-				lastTraversalPoint = p
-				b.player.PlayPixel(p, false, updateWaveform)
-			}
-		})
-	}
 }
 
 func (b *browser) setLoadingState(newState loadingState) {

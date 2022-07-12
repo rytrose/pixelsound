@@ -12,7 +12,7 @@ const Controls = ({ onImageChange, onAudioChange, onModeChange }) => {
           Select an audio file
         </FileInput>
       </div>
-      <Modes onChange={onModeChange}></Modes>
+      {/* <Modes onChange={onModeChange}></Modes> */}
     </div>
   );
 };
